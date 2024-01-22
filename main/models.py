@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 class Profile(models.Model):
@@ -19,5 +20,18 @@ class Profile(models.Model):
         indexes = [
             models.Index(fields=['permission']),
             models.Index(fields=['created_at']),
-
         ]
+
+    async def save_async(self, *args, **kwargs):
+        await self.async_save(*args, **kwargs)
+
+    async def async_save(self, *args, **kwargs):
+        await models.Model.save(self, *args, **kwargs)
+
+    @classmethod
+    async def create_profile(cls, name, device_id, permission):
+        profile = cls(name=name, device_id=device_id, permission=permission)
+        await profile.async_save()
+        return profile
+
+  

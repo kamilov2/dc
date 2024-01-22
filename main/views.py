@@ -1,6 +1,5 @@
 import time
 import logging
-
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -13,6 +12,7 @@ from channels.db import database_sync_to_async
 from django.core.serializers import serialize
 from django.http import StreamingHttpResponse
 from async_generator import async_generator, yield_
+from django.db.models import Q
 from .models import *
 from .serializers import *
 
@@ -38,7 +38,7 @@ class AsyncExample(APIView):
             elapsed_time = end_time - start_time
             print(f"AsyncExample executed in {elapsed_time} seconds")
 
-            return Response({"message": "Async response", "jwt_token": jwt_token}, status=status.HTTP_200_OK)
+            return Response({"message": "Async response", "jwt_token": jwt_payload}, status=status.HTTP_200_OK)
 
         except Exception as e:
             await self.handle_error(request, e)
@@ -46,7 +46,7 @@ class AsyncExample(APIView):
 
     @database_sync_to_async
     def get_profiles(self):
-        return Profile.objects.filter(permission=True).only('name', 'device_id', 'permission').defer('created_at', 'updated_at')[:15]
+        return Profile.objects.filter(permission=True).only('name', 'device_id', 'permission').defer('created_at', 'updated_at')[:1000]
 
     @database_sync_to_async
     def serialize_profiles(self, profiles):
@@ -59,27 +59,23 @@ class AsyncExample(APIView):
 
 class Example(APIView):
     permission_classes = [AllowAny]
-
     def get(self, request):
         try:
             start_time = time.time()
 
-            latest_data = [
-                {"name": f"Item {i}", "value": i * 2} for i in range(1, 21)
-            ]
-            secret_key = settings.SECRET_KEY_JWT
+            # Получите первые 1000 объектов, удовлетворяющих условию permission=True
+            filtered_profiles = Profile.objects.filter(permission=True)[:1000]
 
-            jwt_payload = {"latest_data": latest_data}
-            jwt_token = jwt.encode(jwt_payload, secret_key, algorithm='HS256')
-            decoded_data = jwt.decode(jwt_token, secret_key, algorithms=['HS256'])
-            print(decoded_data)
+            # Сериализуйте объекты Profile
+            serializer = ProfileSerializer(filtered_profiles, many=True)
+            serialized_data = serializer.data
 
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            print(f"Example executed in {elapsed_time} seconds")
 
-            return Response({"message": "Async response", "jwt_token": jwt_token}, status=status.HTTP_200_OK)
+
+            return Response(serialized_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            # Обработка ошибок
+            # Вывести подробности об ошибке в журнал
+            import traceback
+            traceback.print_exc()
             return Response({"error": "Internal Server Error"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
