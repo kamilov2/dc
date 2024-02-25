@@ -43,4 +43,19 @@
 #             return HttpResponseForbidden('Siz admin tomonidan bloklangan usersiz!')
 
 
+# middleware.py
+
+import sentry_sdk
+from django.http import JsonResponse
+
+def sentry_middleware(get_response):
+    def middleware(request):
+        try:
+            response = get_response(request)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            response = JsonResponse({'error': 'Internal Server Error'}, status=500)
+        return response
+
+    return middleware
 

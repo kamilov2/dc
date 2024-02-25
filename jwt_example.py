@@ -25,8 +25,25 @@
 # print(decoded_data)
 
 
-import secrets
+# import secrets
 
-secret_key = secrets.token_hex(128)
+# secret_key = secrets.token_hex(128)
 
-print(secret_key)
+# print(secret_key)
+
+import uuid
+import random
+import string
+import hashlib
+import time
+
+def generate_error_code():
+    timestamp = str(int(time.time()))
+    random_letter = random.choice(string.ascii_uppercase)  # Случайная буква верхнего регистра
+    random_part = ''.join(random.choices(string.ascii_lowercase + string.digits, k=5))  # 5 случайных символов из нижнего регистра и цифр
+    error_id = hashlib.sha256((str(uuid.uuid4()) + timestamp + random_letter + random_part).encode()).hexdigest()[:12]
+    return random_letter + ''.join(random.sample(error_id, len(error_id)))
+
+# Пример использования:
+error_code = generate_error_code()
+print("Error Code:", error_code)
